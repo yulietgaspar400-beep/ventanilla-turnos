@@ -97,7 +97,7 @@ def pantalla_sala():
 
 
 @app.post("/api/turnos", status_code=201)
-    def crear_turno(payload: TurnoCreate):
+def crear_turno(payload: TurnoCreate):
     now = datetime.now(timezone.utc)
     day = now.strftime("%Y%m%d")
     prefix = {"Caja": "C", "Atención al cliente": "A", "Asesoría": "S", "Ventanilla": "V"}[payload.servicio]
