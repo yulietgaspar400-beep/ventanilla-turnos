@@ -69,7 +69,7 @@ app.add_middleware(
 
 class TurnoCreate(BaseModel):
     nombre: str = Field(min_length=2, max_length=100)
-    servicio: Literal["Caja", "Atención al cliente", "Asesoría"]
+    servicio: Literal["Caja", "Atención al cliente", "Asesoría", "Ventanilla"] = "Ventanilla"
 
 
 def as_dict(row):
@@ -100,7 +100,7 @@ def pantalla_sala():
 def crear_turno(payload: TurnoCreate):
     now = datetime.now(timezone.utc)
     day = now.strftime("%Y%m%d")
-    prefix = {"Caja": "C", "Atención al cliente": "A", "Asesoría": "S"}[payload.servicio]
+    prefix = {"Caja": "C", "Atención al cliente": "A", "Asesoría": "S", "Ventanilla": "V"}[payload.servicio]
     with connect() as db:
         count = db.execute(
             "SELECT COUNT(*) AS total FROM turnos WHERE substr(creado_en,1,10)=? AND servicio=?",

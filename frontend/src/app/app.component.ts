@@ -30,7 +30,7 @@ interface Dashboard { pendientes: number; llamados: number; atendidos: number; s
     </section>
     <section class="grid">
       <article class="panel form-panel"><div class="panel-head"><div><div class="eyebrow">NUEVO REGISTRO</div><h2>Asignar turno</h2></div><span class="round-icon">＋</span></div>
-        <form (ngSubmit)="crear()"><label for="nombre">Nombre del cliente</label><input id="nombre" name="nombre" [(ngModel)]="nombre" placeholder="Ej. Ana García" required minlength="2" maxlength="100"><label for="servicio">Tipo de servicio</label><select id="servicio" name="servicio" [(ngModel)]="servicio"><option>Caja</option><option>Atención al cliente</option><option>Asesoría</option></select><button class="primary" type="submit" [disabled]="guardando || !nombre.trim()">{{ guardando ? 'Registrando…' : 'Asignar turno' }} <span>→</span></button><p class="error" *ngIf="error">{{ error }}</p><p class="success" *ngIf="nuevo">Turno {{ nuevo.folio }} asignado correctamente.</p></form>
+        <form (ngSubmit)="crear()"><label for="nombre">Nombre del cliente</label><input id="nombre" name="nombre" [(ngModel)]="nombre" placeholder="Ej. Ana García" required minlength="2" maxlength="100"><button class="primary" type="submit" [disabled]="guardando || !nombre.trim()">{{ guardando ? 'Registrando…' : 'Asignar turno' }} <span>→</span></button><p class="error" *ngIf="error">{{ error }}</p><p class="success" *ngIf="nuevo">Turno {{ nuevo.folio }} asignado correctamente.</p></form>
       </article>
       <article class="panel next-panel"><div class="panel-head"><div><div class="eyebrow">SIGUIENTE EN FILA</div><h2>Control de atención</h2></div><button class="refresh" (click)="cargar()" aria-label="Actualizar">↻</button></div>
         <div class="next-card" *ngIf="dashboard?.siguiente as next; else empty"><div class="queue-tag">{{ next.servicio }}</div><div class="folio">{{ next.folio }}</div><div class="customer">{{ next.nombre }}</div><button class="primary call" (click)="llamar(next)">Llamar a ventanilla <span>→</span></button><button class="complete" (click)="completar(next)">Marcar como atendido</button></div>
@@ -50,7 +50,7 @@ export class AppComponent implements OnInit {
   isSala = window.location.pathname.replace(/\/$/, '') === '/sala';
   salaTurnos: { folio: string; servicio: string; llamado_en: string }[] = [];
   private salaTimer?: number;
-  today = new Date(); nombre = ''; servicio = 'Caja'; guardando = false;
+  today = new Date(); nombre = ''; guardando = false;
   error = ''; nuevo: Turno | null = null; turnos: Turno[] = []; dashboard: Dashboard | null = null;
   ngOnInit() {
     if (this.isSala) {
@@ -72,7 +72,7 @@ export class AppComponent implements OnInit {
   crear() {
     if (!this.nombre.trim()) return;
     this.guardando = true; this.error = ''; this.nuevo = null;
-    this.http.post<Turno>(`${this.api}/turnos`, {nombre: this.nombre.trim(), servicio: this.servicio}).subscribe({
+    this.http.post<Turno>(`${this.api}/turnos`, {nombre: this.nombre.trim()}).subscribe({
       next: x => { this.nuevo = x; this.nombre = ''; this.guardando = false; this.cargar(); },
       error: e => { this.error = e.error?.detail || 'No se pudo registrar el turno.'; this.guardando = false; }
     });
