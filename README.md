@@ -50,6 +50,6 @@ La aplicación crea la tabla al iniciar la API. La base de datos PostgreSQL debe
 ## Configuración importante
 
 - `DATABASE_URL`: obligatorio en Vercel para que los turnos persistan; no guardes su valor en GitHub.
-- La base local SQLite (`backend/ventanilla.db`) es solo para desarrollo.
+- La base local SQLite (`backend/ventanilla.db`) es solo para desarrollo. En Vercel, SQLite en `/tmp` solo permite que la API arranque como demostración y no conserva datos de forma confiable; conecta PostgreSQL antes de registrar turnos reales.
 - En Vercel, las funciones Python están en Beta según la documentación actual de Vercel. Revisa disponibilidad y límites del plan antes de depender de ellas para operación continua.
 - Este MVP no tiene login, roles, auditoría avanzada ni manejo adecuado de datos bancarios. No uses información financiera real hasta añadir esas protecciones.

@@ -9,7 +9,11 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-DB_PATH = Path(__file__).resolve().parent.parent / "ventanilla.db"
+DB_PATH = (
+    Path("/tmp") / "ventanilla.db"
+    if os.getenv("VERCEL")
+    else Path(__file__).resolve().parent.parent / "ventanilla.db"
+)
 SERVICES = {"Caja", "Atención al cliente", "Asesoría"}
 
 
