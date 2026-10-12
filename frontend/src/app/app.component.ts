@@ -1,11 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 interface Turno { id: number; folio: string; servicio: string; estado: string; creado_en: string; llamado_en?: string; atendido_en?: string; }
 interface Dashboard { pendientes: number; llamados: number; atendidos: number; siguiente: Turno | null; }
 
 @Component({
-  selector: 'app-root', standalone: true, imports: [CommonModule],
+  selector: 'app-root', standalone: true, imports: [CommonModule, FormsModule],
   template: `
   <ng-container *ngIf="isSala; else operador">
     <header class="topbar"><div class="brand"><span class="brand-mark">V</span><span>Ventanilla<span class="brand-light"> / Sala de espera</span></span></div><a class="view-link" href="/">Panel de operación</a></header>
