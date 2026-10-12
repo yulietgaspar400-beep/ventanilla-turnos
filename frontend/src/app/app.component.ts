@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 
-interface Turno { id: number; folio: string; nombre: string; servicio: string; estado: string; creado_en: string; }
+interface Turno { id: number; folio: string; servicio: string; estado: string; creado_en: string; }
 interface Dashboard { pendientes: number; llamados: number; atendidos: number; siguiente: Turno | null; }
 
 @Component({
@@ -30,15 +30,15 @@ interface Dashboard { pendientes: number; llamados: number; atendidos: number; s
     </section>
     <section class="grid">
       <article class="panel form-panel"><div class="panel-head"><div><div class="eyebrow">NUEVO REGISTRO</div><h2>Asignar turno</h2></div><span class="round-icon">＋</span></div>
-        <form (ngSubmit)="crear()"><label for="nombre">Nombre del cliente</label><input id="nombre" name="nombre" [(ngModel)]="nombre" required minlength="2" maxlength="100"><button class="primary" type="submit" [disabled]="guardando || !nombre.trim()">{{ guardando ? 'Registrando…' : 'Asignar turno' }} <span>→</span></button><p class="error" *ngIf="error">{{ error }}</p><p class="success" *ngIf="nuevo">Turno {{ nuevo.folio }} asignado correctamente.</p></form>
+        <form (ngSubmit)="crear()"><button class="primary" type="submit" [disabled]="guardando">{{ guardando ? 'Registrando…' : 'Asignar turno' }} <span>→</span></button><p class="error" *ngIf="error">{{ error }}</p><p class="success" *ngIf="nuevo">Turno {{ nuevo.folio }} asignado correctamente.</p></form>
       </article>
       <article class="panel next-panel"><div class="panel-head"><div><div class="eyebrow">SIGUIENTE EN FILA</div><h2>Control de atención</h2></div><button class="refresh" (click)="cargar()" aria-label="Actualizar">↻</button></div>
-        <div class="next-card" *ngIf="dashboard?.siguiente as next; else empty"><div class="queue-tag">{{ next.servicio }}</div><div class="folio">{{ next.folio }}</div><div class="customer">{{ next.nombre }}</div><button class="primary call" (click)="llamar(next)">Llamar a ventanilla <span>→</span></button><button class="complete" (click)="completar(next)">Marcar como atendido</button></div>
+        <div class="next-card" *ngIf="dashboard?.siguiente as next; else empty"><div class="queue-tag">{{ next.servicio }}</div><div class="folio">{{ next.folio }}</div><button class="primary call" (click)="llamar(next)">Llamar a ventanilla <span>→</span></button><button class="complete" (click)="completar(next)">Marcar como atendido</button></div>
         <ng-template #empty><div class="empty"><span>✓</span><strong>Fila al día</strong><p>No hay turnos pendientes por atender.</p></div></ng-template>
       </article>
     </section>
     <section class="panel history"><div class="panel-head"><div><div class="eyebrow">ACTIVIDAD RECIENTE</div><h2>Historial de turnos</h2></div><span class="period">Últimos 4 meses</span></div>
-      <div class="table-wrap"><table><thead><tr><th>FOLIO</th><th>CLIENTE</th><th>SERVICIO</th><th>FECHA</th><th>ESTADO</th><th></th></tr></thead><tbody><tr *ngFor="let t of turnos"><td class="folio-cell">{{ t.folio }}</td><td>{{ t.nombre }}</td><td>{{ t.servicio }}</td><td>{{ t.creado_en | date:'d MMM, HH:mm' }}</td><td><span class="badge" [class]="'badge '+t.estado">{{ estadoLabel(t.estado) }}</span></td><td><button *ngIf="t.estado !== 'atendido'" class="row-action" (click)="completar(t)">Completar</button></td></tr><tr *ngIf="!turnos.length"><td colspan="6" class="no-data">Aún no hay turnos registrados.</td></tr></tbody></table></div>
+      <div class="table-wrap"><table><thead><tr><th>FOLIO</th><th>SERVICIO</th><th>FECHA</th><th>ESTADO</th><th></th></tr></thead><tbody><tr *ngFor="let t of turnos"><td class="folio-cell">{{ t.folio }}</td><td>{{ t.servicio }}</td><td>{{ t.creado_en | date:'d MMM, HH:mm' }}</td><td><span class="badge" [class]="'badge '+t.estado">{{ estadoLabel(t.estado) }}</span></td><td><button *ngIf="t.estado !== 'atendido'" class="row-action" (click)="completar(t)">Completar</button></td></tr><tr *ngIf="!turnos.length"><td colspan="5" class="no-data">Aún no hay turnos registrados.</td></tr></tbody></table></div>
     </section>
     <footer>Ventanilla <span>·</span> Panel de operación</footer>
   </main>
@@ -50,7 +50,7 @@ export class AppComponent implements OnInit {
   isSala = window.location.pathname.replace(/\/$/, '') === '/sala';
   salaTurnos: { folio: string; servicio: string; llamado_en: string }[] = [];
   private salaTimer?: number;
-  today = new Date(); nombre = ''; guardando = false;
+  today = new Date(); guardando = false;
   error = ''; nuevo: Turno | null = null; turnos: Turno[] = []; dashboard: Dashboard | null = null;
   ngOnInit() {
     if (this.isSala) {
@@ -70,10 +70,9 @@ export class AppComponent implements OnInit {
     this.http.get<Dashboard>(`${this.api}/dashboard`).subscribe({next: x => this.dashboard = x});
   }
   crear() {
-    if (!this.nombre.trim()) return;
     this.guardando = true; this.error = ''; this.nuevo = null;
-    this.http.post<Turno>(`${this.api}/turnos`, {nombre: this.nombre.trim()}).subscribe({
-      next: x => { this.nuevo = x; this.nombre = ''; this.guardando = false; this.cargar(); },
+    this.http.post<Turno>(`${this.api}/turnos`, {}).subscribe({
+      next: x => { this.nuevo = x; this.guardando = false; this.cargar(); },
       error: e => { this.error = e.error?.detail || 'No se pudo registrar el turno.'; this.guardando = false; }
     });
   }

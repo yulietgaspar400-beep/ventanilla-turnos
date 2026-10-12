@@ -3,7 +3,7 @@
 Sistema inicial de atención por turnos: API Python (FastAPI) e interfaz Angular. Para desarrollo local usa SQLite; en Vercel usa PostgreSQL mediante `DATABASE_URL`.
 
 ## Funciones
-- Registro de solicitudes de turno por cliente y servicio.
+- Asignación de turnos anónimos con un botón, sin capturar nombres.
 - Asignación de folio consecutivo diario.
 - Llamar al siguiente turno pendiente y marcarlo como atendido.
 - Dos vistas: panel de operación en `/` y pantalla pública de sala de espera en `/sala`.

@@ -7,7 +7,7 @@ from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 DB_PATH = (
     Path("/tmp") / "ventanilla.db"
@@ -68,7 +68,7 @@ app.add_middleware(
 
 
 class TurnoCreate(BaseModel):
-    nombre: str = Field(min_length=2, max_length=100)
+    nombre: str = "Cliente"
     servicio: Literal["Caja", "Atención al cliente", "Asesoría", "Ventanilla"] = "Ventanilla"
 
 
@@ -97,7 +97,7 @@ def pantalla_sala():
 
 
 @app.post("/api/turnos", status_code=201)
-def crear_turno(payload: TurnoCreate):
+    def crear_turno(payload: TurnoCreate):
     now = datetime.now(timezone.utc)
     day = now.strftime("%Y%m%d")
     prefix = {"Caja": "C", "Atención al cliente": "A", "Asesoría": "S", "Ventanilla": "V"}[payload.servicio]
