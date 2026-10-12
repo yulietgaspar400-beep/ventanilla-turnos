@@ -9,7 +9,18 @@ interface Dashboard { pendientes: number; llamados: number; atendidos: number; s
 @Component({
   selector: 'app-root', standalone: true, imports: [CommonModule, FormsModule],
   template: `
-  <header class="topbar"><div class="brand"><span class="brand-mark">V</span><span>Ventanilla<span class="brand-light"> / Atención</span></span></div><span class="live"><i></i> Sistema operativo</span></header>
+  <ng-container *ngIf="isSala; else operador">
+    <header class="topbar"><div class="brand"><span class="brand-mark">V</span><span>Ventanilla<span class="brand-light"> / Sala de espera</span></span></div><a class="view-link" href="/">Panel de operación</a></header>
+    <main class="waiting-room">
+      <section class="waiting-heading"><div class="eyebrow">CENTRO DE ATENCIÓN</div><h1>Turnos llamados</h1><p>Por favor, acércate a ventanilla cuando veas tu folio.</p></section>
+      <section class="waiting-current" *ngIf="salaTurnos.length; else quietRoom"><div class="waiting-label">LLAMADO RECIENTEMENTE</div><div class="waiting-ticket">{{ salaTurnos[0].folio }}</div><div class="waiting-service">{{ salaTurnos[0].servicio }} · Ventanilla 1</div></section>
+      <ng-template #quietRoom><section class="waiting-current waiting-empty"><div class="empty-mark">✓</div><h2>En espera de un llamado</h2><p>En breve aparecerán aquí los turnos llamados.</p></section></ng-template>
+      <section class="waiting-list" *ngIf="salaTurnos.length > 1"><h2>Llamados recientes</h2><div class="waiting-row" *ngFor="let t of salaTurnos.slice(1)"><strong>{{ t.folio }}</strong><span>{{ t.servicio }}</span><span>Ventanilla 1</span></div></section>
+      <footer>La pantalla se actualiza automáticamente <span>·</span> {{ today | date:'shortTime' }}</footer>
+    </main>
+  </ng-container>
+  <ng-template #operador>
+  <header class="topbar"><div class="brand"><span class="brand-mark">V</span><span>Ventanilla<span class="brand-light"> / Atención</span></span></div><span class="live"><i></i> Sistema operativo</span><a class="view-link" href="/sala" target="_blank">Abrir sala de espera ↗</a></header>
   <main>
     <section class="intro"><div><div class="eyebrow">CENTRO DE ATENCIÓN</div><h1>Gestión de turnos</h1><p>Registra clientes y organiza la atención en ventanilla.</p></div><div class="date">{{ today | date:'EEEE, d MMMM y' }}</div></section>
     <section class="stats">
@@ -30,14 +41,30 @@ interface Dashboard { pendientes: number; llamados: number; atendidos: number; s
       <div class="table-wrap"><table><thead><tr><th>FOLIO</th><th>CLIENTE</th><th>SERVICIO</th><th>FECHA</th><th>ESTADO</th><th></th></tr></thead><tbody><tr *ngFor="let t of turnos"><td class="folio-cell">{{ t.folio }}</td><td>{{ t.nombre }}</td><td>{{ t.servicio }}</td><td>{{ t.creado_en | date:'d MMM, HH:mm' }}</td><td><span class="badge" [class]="'badge '+t.estado">{{ estadoLabel(t.estado) }}</span></td><td><button *ngIf="t.estado !== 'atendido'" class="row-action" (click)="completar(t)">Completar</button></td></tr><tr *ngIf="!turnos.length"><td colspan="6" class="no-data">Aún no hay turnos registrados.</td></tr></tbody></table></div>
     </section>
     <footer>Ventanilla <span>·</span> Panel de operación</footer>
-  </main>`
+  </main>
+  </ng-template>`
 })
 export class AppComponent implements OnInit {
   private http = inject(HttpClient);
   private api = '/api';
+  isSala = window.location.pathname.replace(/\/$/, '') === '/sala';
+  salaTurnos: { folio: string; servicio: string; llamado_en: string }[] = [];
+  private salaTimer?: number;
   today = new Date(); nombre = ''; servicio = 'Caja'; guardando = false;
   error = ''; nuevo: Turno | null = null; turnos: Turno[] = []; dashboard: Dashboard | null = null;
-  ngOnInit() { this.cargar(); }
+  ngOnInit() {
+    if (this.isSala) {
+      this.cargarSala();
+      this.salaTimer = window.setInterval(() => { this.today = new Date(); this.cargarSala(); }, 5000);
+    } else {
+      this.cargar();
+    }
+  }
+  ngOnDestroy() { if (this.salaTimer) window.clearInterval(this.salaTimer); }
+  cargarSala() {
+    this.http.get<{ folio: string; servicio: string; llamado_en: string }[]>(`${this.api}/sala`)
+      .subscribe({next: rows => this.salaTurnos = rows, error: () => this.salaTurnos = []});
+  }
   cargar() {
     this.http.get<Turno[]>(`${this.api}/turnos?months=4`).subscribe({next: x => this.turnos = x, error: () => this.error = 'No se pudo conectar con el servidor.'});
     this.http.get<Dashboard>(`${this.api}/dashboard`).subscribe({next: x => this.dashboard = x});

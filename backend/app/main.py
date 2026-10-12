@@ -85,6 +85,17 @@ def health():
     return {"status": "ok"}
 
 
+@app.get("/api/sala")
+def pantalla_sala():
+    """Public display data: show called folios only, never customer names."""
+    with connect() as db:
+        rows = db.execute(
+            "SELECT folio, servicio, llamado_en FROM turnos "
+            "WHERE estado='llamado' ORDER BY llamado_en DESC LIMIT 8"
+        ).fetchall()
+        return [as_dict(row) for row in rows]
+
+
 @app.post("/api/turnos", status_code=201)
 def crear_turno(payload: TurnoCreate):
     now = datetime.now(timezone.utc)

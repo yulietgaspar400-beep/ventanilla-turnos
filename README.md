@@ -6,6 +6,8 @@ Sistema inicial de atención por turnos: API Python (FastAPI) e interfaz Angular
 - Registro de solicitudes de turno por cliente y servicio.
 - Asignación de folio consecutivo diario.
 - Llamar al siguiente turno pendiente y marcarlo como atendido.
+- Dos vistas: panel de operación en `/` y pantalla pública de sala de espera en `/sala`.
+- La sala muestra folios llamados (sin nombres de clientes) y se actualiza cada cinco segundos.
 - Tablero básico y consultas de turnos de los últimos cuatro meses.
 - API con CORS habilitado para Angular local.
 
@@ -46,6 +48,7 @@ La aplicación crea la tabla al iniciar la API. La base de datos PostgreSQL debe
 - `POST /api/turnos/{id}/call` llamar turno.
 - `POST /api/turnos/{id}/complete` marcar atendido.
 - `GET /api/dashboard` resumen y siguiente turno.
+- `GET /api/sala` folios llamados para la pantalla de espera.
 
 ## Configuración importante
 
