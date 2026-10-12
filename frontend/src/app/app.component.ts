@@ -1,13 +1,11 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 
-interface Turno { id: number; folio: string; servicio: string; estado: string; creado_en: string; }
+interface Turno { id: number; folio: string; servicio: string; estado: string; creado_en: string; llamado_en?: string; atendido_en?: string; }
 interface Dashboard { pendientes: number; llamados: number; atendidos: number; siguiente: Turno | null; }
 
 @Component({
-  selector: 'app-root', standalone: true, imports: [CommonModule, FormsModule],
+  selector: 'app-root', standalone: true, imports: [CommonModule],
   template: `
   <ng-container *ngIf="isSala; else operador">
     <header class="topbar"><div class="brand"><span class="brand-mark">V</span><span>Ventanilla<span class="brand-light"> / Sala de espera</span></span></div><a class="view-link" href="/">Panel de operación</a></header>
@@ -22,7 +20,7 @@ interface Dashboard { pendientes: number; llamados: number; atendidos: number; s
   <ng-template #operador>
   <header class="topbar"><div class="brand"><span class="brand-mark">V</span><span>Ventanilla<span class="brand-light"> / Atención</span></span></div><span class="live"><i></i> Sistema operativo</span><a class="view-link" href="/sala" target="_blank">Abrir sala de espera ↗</a></header>
   <main>
-    <section class="intro"><div><div class="eyebrow">CENTRO DE ATENCIÓN</div><h1>Gestión de turnos</h1><p>Registra clientes y organiza la atención en ventanilla.</p></div><div class="date">{{ today | date:'EEEE, d MMMM y' }}</div></section>
+    <section class="intro"><div><div class="eyebrow">CENTRO DE ATENCIÓN</div><h1>Gestión de turnos</h1><p>Asigna turnos y organiza la atención en ventanilla.</p></div><div class="date">{{ today | date:'EEEE, d MMMM y' }}</div></section>
     <section class="stats">
       <article class="stat"><span class="stat-icon blue">↗</span><div><span class="stat-label">Pendientes</span><strong>{{ dashboard?.pendientes ?? 0 }}</strong></div></article>
       <article class="stat"><span class="stat-icon amber">◷</span><div><span class="stat-label">En atención</span><strong>{{ dashboard?.llamados ?? 0 }}</strong></div></article>
@@ -45,14 +43,17 @@ interface Dashboard { pendientes: number; llamados: number; atendidos: number; s
   </ng-template>`
 })
 export class AppComponent implements OnInit {
-  private http = inject(HttpClient);
-  private api = '/api';
+  private readonly storageKey = 'ventanilla-turnos-demo-v1';
   isSala = window.location.pathname.replace(/\/$/, '') === '/sala';
   salaTurnos: { folio: string; servicio: string; llamado_en: string }[] = [];
   private salaTimer?: number;
+  private storageListener = (event: StorageEvent) => {
+    if (event.key === this.storageKey) this.cargar();
+  };
   today = new Date(); guardando = false;
   error = ''; nuevo: Turno | null = null; turnos: Turno[] = []; dashboard: Dashboard | null = null;
   ngOnInit() {
+    window.addEventListener('storage', this.storageListener);
     if (this.isSala) {
       this.cargarSala();
       this.salaTimer = window.setInterval(() => { this.today = new Date(); this.cargarSala(); }, 5000);
@@ -60,23 +61,64 @@ export class AppComponent implements OnInit {
       this.cargar();
     }
   }
-  ngOnDestroy() { if (this.salaTimer) window.clearInterval(this.salaTimer); }
+  ngOnDestroy() {
+    if (this.salaTimer) window.clearInterval(this.salaTimer);
+    window.removeEventListener('storage', this.storageListener);
+  }
+  private leerTurnos(): Turno[] {
+    try { return JSON.parse(localStorage.getItem(this.storageKey) || '[]') as Turno[]; }
+    catch { return []; }
+  }
+  private guardarTurnos(turnos: Turno[]) {
+    localStorage.setItem(this.storageKey, JSON.stringify(turnos));
+    this.cargar();
+  }
   cargarSala() {
-    this.http.get<{ folio: string; servicio: string; llamado_en: string }[]>(`${this.api}/sala`)
-      .subscribe({next: rows => this.salaTurnos = rows, error: () => this.salaTurnos = []});
+    this.salaTurnos = this.leerTurnos()
+      .filter(t => t.estado === 'llamado')
+      .sort((a, b) => (b.llamado_en || '').localeCompare(a.llamado_en || ''))
+      .slice(0, 8)
+      .map(t => ({ folio: t.folio, servicio: t.servicio, llamado_en: t.llamado_en || '' }));
   }
   cargar() {
-    this.http.get<Turno[]>(`${this.api}/turnos?months=4`).subscribe({next: x => this.turnos = x, error: () => this.error = 'No se pudo conectar con el servidor.'});
-    this.http.get<Dashboard>(`${this.api}/dashboard`).subscribe({next: x => this.dashboard = x});
+    const all = this.leerTurnos();
+    const since = Date.now() - 120 * 24 * 60 * 60 * 1000;
+    this.turnos = all.filter(t => new Date(t.creado_en).getTime() >= since)
+      .sort((a, b) => b.creado_en.localeCompare(a.creado_en));
+    const todayKey = new Date().toDateString();
+    const today = all.filter(t => new Date(t.creado_en).toDateString() === todayKey);
+    this.dashboard = {
+      pendientes: today.filter(t => t.estado === 'pendiente').length,
+      llamados: today.filter(t => t.estado === 'llamado').length,
+      atendidos: today.filter(t => t.estado === 'atendido').length,
+      siguiente: all.filter(t => t.estado === 'pendiente').sort((a, b) => a.creado_en.localeCompare(b.creado_en))[0] || null
+    };
+    if (this.isSala) this.cargarSala();
   }
   crear() {
     this.guardando = true; this.error = ''; this.nuevo = null;
-    this.http.post<Turno>(`${this.api}/turnos`, {}).subscribe({
-      next: x => { this.nuevo = x; this.guardando = false; this.cargar(); },
-      error: e => { this.error = e.error?.detail || 'No se pudo registrar el turno.'; this.guardando = false; }
-    });
+    const all = this.leerTurnos();
+    const now = new Date();
+    const day = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const sequence = all.filter(t => t.folio.startsWith(`V-${day}-`)).length + 1;
+    const turno: Turno = {
+      id: Date.now(), folio: `V-${day}-${String(sequence).padStart(3, '0')}`,
+      servicio: 'Ventanilla', estado: 'pendiente', creado_en: now.toISOString()
+    };
+    this.nuevo = turno;
+    this.guardarTurnos([turno, ...all]);
+    this.guardando = false;
   }
-  llamar(t: Turno) { this.http.post(`${this.api}/turnos/${t.id}/call`, {}).subscribe({next: () => this.cargar(), error: () => this.error = 'No se pudo llamar el turno.'}); }
-  completar(t: Turno) { this.http.post(`${this.api}/turnos/${t.id}/complete`, {}).subscribe({next: () => this.cargar(), error: () => this.error = 'No se pudo completar el turno.'}); }
+  llamar(t: Turno) {
+    this.error = '';
+    const now = new Date().toISOString();
+    this.guardarTurnos(this.leerTurnos().map(row => row.id === t.id
+      ? { ...row, estado: 'llamado', llamado_en: now } : row));
+  }
+  completar(t: Turno) {
+    this.error = '';
+    this.guardarTurnos(this.leerTurnos().map(row => row.id === t.id
+      ? { ...row, estado: 'atendido', atendido_en: new Date().toISOString() } : row));
+  }
   estadoLabel(s: string) { return ({pendiente:'Pendiente', llamado:'En atención', atendido:'Atendido'} as Record<string,string>)[s] || s; }
 }
